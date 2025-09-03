@@ -33,7 +33,9 @@ jobs:
         run: |
           cargo install cargo-bundle --locked || true
           # cargo-bundle uses --profile; avoid combining --release with --profile internally
-          cargo bundle -p miassistant-gui --features ui --profile release
+          # use --package (-k) to select package (cargo-bundle uses -k/--package)
+          # prefer --release shorthand instead of --profile to avoid duplicate/profile conflicts
+          cargo bundle -k miassistant-gui --features ui --release
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
@@ -72,8 +74,8 @@ jobs:
           $meta = cargo metadata --format-version 1 --no-deps --manifest-path crates/gui/Cargo.toml | ConvertFrom-Json
           $ver = ($meta.packages | Where-Object { $_.name -eq 'miassistant-gui' }).version
           Write-Host "Building MSI for miassistant-gui version $ver"
-          # Pass define to candle via cargo-wix (args after -- are forwarded)
-          cargo wix -p miassistant-gui --nocapture -- --define "CargoPackageVersion=$ver"
+          # Use cargo-wix's --install-version to set MSI version instead of forwarding defines
+          cargo wix -p miassistant-gui --nocapture --install-version $ver
           Copy-Item target\wix\miassistant-gui-*.msi .\miassistant-Windows.msi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
