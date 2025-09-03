@@ -1,13 +1,13 @@
 #[cfg(feature = "ui")]
-use std::sync::mpsc::{self, Sender, Receiver};
-#[cfg(feature = "ui")]
-use std::thread;
-#[cfg(feature = "ui")]
-use miassistant_core::{usb, adb, device::DeviceInfo, validate, md5, sideload};
-#[cfg(feature = "ui")]
-use std::sync::{Arc};
+use miassistant_core::{adb, device::DeviceInfo, md5, sideload, usb, validate};
 #[cfg(feature = "ui")]
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(feature = "ui")]
+use std::sync::mpsc::{self, Receiver, Sender};
+#[cfg(feature = "ui")]
+use std::sync::Arc;
+#[cfg(feature = "ui")]
+use std::thread;
 
 #[cfg(feature = "ui")]
 fn main() {
@@ -20,7 +20,8 @@ fn main() {
         "MAF (MiAssistantFork) GUI",
         native,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 #[cfg(not(feature = "ui"))]
@@ -43,7 +44,11 @@ enum Msg {
 
 #[cfg(feature = "ui")]
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
-enum Language { #[default] En, Es }
+enum Language {
+    #[default]
+    En,
+    Es,
+}
 
 #[cfg(feature = "ui")]
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
@@ -71,7 +76,7 @@ struct App {
     erase_confirmed: bool,
     cancel_token: Option<Arc<AtomicBool>>,
     devices: Vec<usb::DeviceSummary>,
-    selected_device: Option<(u8,u8)>,
+    selected_device: Option<(u8, u8)>,
     last_error: Option<String>,
     last_flash_failed: bool,
     language: Language,
@@ -86,7 +91,9 @@ impl App {
                 if let Ok(data) = serde_json::from_str::<Persisted>(&s) {
                     app.selected_file = data.selected_file.clone();
                     app.persist = data.clone();
-                    if let Some([w, h]) = data.window_size { app.pending_window_size = Some(egui::vec2(w, h)); }
+                    if let Some([w, h]) = data.window_size {
+                        app.pending_window_size = Some(egui::vec2(w, h));
+                    }
                 }
             }
         }
@@ -126,37 +133,72 @@ impl App {
             },
         }
     }
-    fn push_log(&mut self, s: impl Into<String>) { let s = s.into(); self.logs.push(s); if self.logs.len() > 500 { let remove = self.logs.len() - 500; self.logs.drain(0..remove); } }
+    fn push_log(&mut self, s: impl Into<String>) {
+        let s = s.into();
+        self.logs.push(s);
+        if self.logs.len() > 500 {
+            let remove = self.logs.len() - 500;
+            self.logs.drain(0..remove);
+        }
+    }
 
     fn start_task<F: FnOnce(Sender<Msg>) + Send + 'static>(&mut self, f: F) {
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
         self.busy = true;
-        thread::spawn(move || { f(tx) });
+        thread::spawn(move || f(tx));
     }
 
     fn action_detect(&mut self) {
-        if self.busy { return; }
+        if self.busy {
+            return;
+        }
         self.status = "Detecting device...".into();
         self.logs.clear();
         let selected = self.selected_device;
         self.start_task(move |tx| {
             tx.send(Msg::Status("Detecting ADB interface".into())).ok();
             let maybe_dev = match selected {
-                Some((bus, addr)) => usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb()),
+                Some((bus, addr)) => {
+                    usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb())
+                }
                 None => usb::find_first_adb(),
             };
             let mut dev = match maybe_dev {
                 Ok(d) => d,
-                Err(e) => { tx.send(Msg::Error(format!("{}", e))).ok(); return; }
+                Err(e) => {
+                    tx.send(Msg::Error(format!("{}", e))).ok();
+                    return;
+                }
             };
-            let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 5_000 };
-            if let Err(e) = t.connect() { tx.send(Msg::Error(format!("ADB connect failed: {}", e))).ok(); return; }
+            let mut t = adb::AdbTransport {
+                dev: &mut dev,
+                timeout_ms: 5_000,
+            };
+            if let Err(e) = t.connect() {
+                tx.send(Msg::Error(format!("ADB connect failed: {}", e)))
+                    .ok();
+                return;
+            }
             let mut info = DeviceInfo::default();
             for (field, query) in [
-                (&mut info.device, "getdevice:"), (&mut info.version, "getversion:"), (&mut info.sn, "getsn:"), (&mut info.codebase, "getcodebase:"), (&mut info.branch, "getbranch:"), (&mut info.language, "getlanguage:"), (&mut info.region, "getregion:"), (&mut info.romzone, "getromzone:"),
+                (&mut info.device, "getdevice:"),
+                (&mut info.version, "getversion:"),
+                (&mut info.sn, "getsn:"),
+                (&mut info.codebase, "getcodebase:"),
+                (&mut info.branch, "getbranch:"),
+                (&mut info.language, "getlanguage:"),
+                (&mut info.region, "getregion:"),
+                (&mut info.romzone, "getromzone:"),
             ] {
-                match t.simple_command(query) { Ok(val) => *field = val, Err(e) => { tx.send(Msg::Error(format!("ADB query {} failed: {}", query, e))).ok(); return; } }
+                match t.simple_command(query) {
+                    Ok(val) => *field = val,
+                    Err(e) => {
+                        tx.send(Msg::Error(format!("ADB query {} failed: {}", query, e)))
+                            .ok();
+                        return;
+                    }
+                }
             }
             tx.send(Msg::DeviceInfo(info)).ok();
             tx.send(Msg::Status("Device detected".into())).ok();
@@ -164,16 +206,35 @@ impl App {
     }
 
     fn action_list_roms(&mut self) {
-        if self.busy { return; }
-        let info = match &self.device_info { Some(i) => i.clone(), None => { self.push_log("No device info. Detect first."); return; } };
+        if self.busy {
+            return;
+        }
+        let info = match &self.device_info {
+            Some(i) => i.clone(),
+            None => {
+                self.push_log("No device info. Detect first.");
+                return;
+            }
+        };
         self.start_task(move |tx| {
-            tx.send(Msg::Status("Querying Xiaomi ROM listings".into())).ok();
-            let v = match validate::Validator::new().and_then(|val| val.validate(&info, "", false)) {
+            tx.send(Msg::Status("Querying Xiaomi ROM listings".into()))
+                .ok();
+            let v = match validate::Validator::new().and_then(|val| val.validate(&info, "", false))
+            {
                 Ok(validate::ValidationResult::Listing(val)) => val,
-                Ok(_) => { tx.send(Msg::Error("Unexpected response (expected listing)".into())).ok(); return; }
-                Err(e) => { tx.send(Msg::Error(format!("Validation failed: {}", e))).ok(); return; }
+                Ok(_) => {
+                    tx.send(Msg::Error("Unexpected response (expected listing)".into()))
+                        .ok();
+                    return;
+                }
+                Err(e) => {
+                    tx.send(Msg::Error(format!("Validation failed: {}", e)))
+                        .ok();
+                    return;
+                }
             };
-            let pretty = serde_json::to_string_pretty(&v).unwrap_or_else(|_| "<unable to format>".into());
+            let pretty =
+                serde_json::to_string_pretty(&v).unwrap_or_else(|_| "<unable to format>".into());
             tx.send(Msg::Roms(pretty)).ok();
             tx.send(Msg::Status("Done".into())).ok();
         });
@@ -181,35 +242,74 @@ impl App {
 
     fn action_pick_file(&mut self) {
         #[cfg(feature = "ui")]
-        if let Some(path) = rfd::FileDialog::new().add_filter("ZIP", &["zip"]).pick_file() {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("ZIP", &["zip"])
+            .pick_file()
+        {
             self.selected_file = Some(path.display().to_string());
         }
     }
 
     fn action_get_token(&mut self) {
-        if self.busy { return; }
-        let info = match &self.device_info { Some(i) => i.clone(), None => { self.push_log("No device info. Detect first."); return; } };
-        let file = match &self.selected_file { Some(f) => f.clone(), None => { self.push_log("Pick a ROM .zip file first."); return; } };
+        if self.busy {
+            return;
+        }
+        let info = match &self.device_info {
+            Some(i) => i.clone(),
+            None => {
+                self.push_log("No device info. Detect first.");
+                return;
+            }
+        };
+        let file = match &self.selected_file {
+            Some(f) => f.clone(),
+            None => {
+                self.push_log("Pick a ROM .zip file first.");
+                return;
+            }
+        };
         self.start_task(move |tx| {
             tx.send(Msg::Status("Computing MD5".into())).ok();
-            let md5sum = match md5::md5_file(&file) { Ok(s) => s, Err(e) => { tx.send(Msg::Error(format!("MD5 failed: {}", e))).ok(); return; } };
-            tx.send(Msg::Log(format!("md5: {}", md5sum))).ok();
-            let res = match validate::Validator::new().and_then(|v| v.validate(&info, &md5sum, true)) {
-                Ok(r) => r, Err(e) => { tx.send(Msg::Error(format!("Validation failed: {}", e))).ok(); return; }
+            let md5sum = match md5::md5_file(&file) {
+                Ok(s) => s,
+                Err(e) => {
+                    tx.send(Msg::Error(format!("MD5 failed: {}", e))).ok();
+                    return;
+                }
             };
+            tx.send(Msg::Log(format!("md5: {}", md5sum))).ok();
+            let res =
+                match validate::Validator::new().and_then(|v| v.validate(&info, &md5sum, true)) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        tx.send(Msg::Error(format!("Validation failed: {}", e)))
+                            .ok();
+                        return;
+                    }
+                };
             match res {
                 validate::ValidationResult::FlashToken { token, erase } => {
                     let _ = tx.send(Msg::Token { token, erase });
                     let _ = tx.send(Msg::Status("Token ready".to_string()));
                 }
-                _ => { let _ = tx.send(Msg::Error("Expected flash token".to_string())); }
+                _ => {
+                    let _ = tx.send(Msg::Error("Expected flash token".to_string()));
+                }
             }
         });
     }
 
     fn action_flash(&mut self) {
-        if self.busy { return; }
-        let file = match &self.selected_file { Some(f) => f.clone(), None => { self.push_log("Pick a ROM .zip file first."); return; } };
+        if self.busy {
+            return;
+        }
+        let file = match &self.selected_file {
+            Some(f) => f.clone(),
+            None => {
+                self.push_log("Pick a ROM .zip file first.");
+                return;
+            }
+        };
         // If erase is indicated and not yet confirmed, open confirm dialog
         if matches!(self.erase_flag, Some(true)) && !self.erase_confirmed {
             self.confirm_erase_dialog = true;
@@ -223,33 +323,75 @@ impl App {
         self.start_task(move |tx| {
             tx.send(Msg::Status("Preparing to flash".into())).ok();
             let maybe_dev = match selected {
-                Some((bus, addr)) => usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb()),
+                Some((bus, addr)) => {
+                    usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb())
+                }
                 None => usb::find_first_adb(),
             };
             let mut dev = match maybe_dev {
                 Ok(d) => d,
-                Err(e) => { let _ = tx.send(Msg::Error(format!("{}", e))); return; }
+                Err(e) => {
+                    let _ = tx.send(Msg::Error(format!("{}", e)));
+                    return;
+                }
             };
-            let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 30_000 };
-            if let Err(e) = t.connect() { tx.send(Msg::Error(format!("ADB connect failed: {}", e))).ok(); return; }
+            let mut t = adb::AdbTransport {
+                dev: &mut dev,
+                timeout_ms: 30_000,
+            };
+            if let Err(e) = t.connect() {
+                tx.send(Msg::Error(format!("ADB connect failed: {}", e)))
+                    .ok();
+                return;
+            }
             let token = if let Some(tok) = token_opt {
                 tok
             } else if let Some(info) = info_opt {
-                let md5sum = match md5::md5_file(&file) { Ok(s) => s, Err(e) => { tx.send(Msg::Error(format!("MD5 failed: {}", e))).ok(); return; } };
+                let md5sum = match md5::md5_file(&file) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tx.send(Msg::Error(format!("MD5 failed: {}", e))).ok();
+                        return;
+                    }
+                };
                 match validate::Validator::new().and_then(|v| v.validate(&info, &md5sum, true)) {
                     Ok(validate::ValidationResult::FlashToken { token, .. }) => token,
-                    Ok(_) => { tx.send(Msg::Error("Expected flash token".into())).ok(); return; }
-                    Err(e) => { tx.send(Msg::Error(format!("Validation failed: {}", e))).ok(); return; }
+                    Ok(_) => {
+                        tx.send(Msg::Error("Expected flash token".into())).ok();
+                        return;
+                    }
+                    Err(e) => {
+                        tx.send(Msg::Error(format!("Validation failed: {}", e)))
+                            .ok();
+                        return;
+                    }
                 }
             } else {
-                tx.send(Msg::Error("No device info. Detect first.".into())).ok();
+                tx.send(Msg::Error("No device info. Detect first.".into()))
+                    .ok();
                 return;
             };
             // Use resumable sideload; progress isn't callback-based now, so we approximate by polling state file size.
-            let res = sideload::sideload_resumable_with_progress(&mut t, &file, &token, &cancel, false, |sent, total| {
-                let _ = tx.send(Msg::Progress { sent, total });
-            });
-            match res { Ok(()) => { tx.send(Msg::FlashDone(Ok(()))).ok(); tx.send(Msg::Status("Flash done".into())).ok(); }, Err(e) => { tx.send(Msg::FlashDone(Err(e.to_string()))).ok(); tx.send(Msg::Error(format!("Flash failed: {}", e))).ok(); } }
+            let res = sideload::sideload_resumable_with_progress(
+                &mut t,
+                &file,
+                &token,
+                &cancel,
+                false,
+                |sent, total| {
+                    let _ = tx.send(Msg::Progress { sent, total });
+                },
+            );
+            match res {
+                Ok(()) => {
+                    tx.send(Msg::FlashDone(Ok(()))).ok();
+                    tx.send(Msg::Status("Flash done".into())).ok();
+                }
+                Err(e) => {
+                    tx.send(Msg::FlashDone(Err(e.to_string()))).ok();
+                    tx.send(Msg::Error(format!("Flash failed: {}", e))).ok();
+                }
+            }
         });
     }
 }
@@ -257,7 +399,9 @@ impl App {
 #[cfg(feature = "ui")]
 impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if let Ok(s) = serde_json::to_string(&self.persist) { storage.set_string("miassistant_gui", s); }
+        if let Ok(s) = serde_json::to_string(&self.persist) {
+            storage.set_string("miassistant_gui", s);
+        }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -286,12 +430,37 @@ impl eframe::App for App {
             match msg {
                 Msg::Status(s) => self.status = s,
                 Msg::Log(s) => self.push_log(s),
-                Msg::Error(e) => { self.last_error = Some(e.clone()); self.push_log(format!("Error: {}", e)); self.status = "Error".into(); self.busy = false; },
-                Msg::DeviceInfo(info) => { self.device_info = Some(info); self.busy = false; },
-                Msg::Roms(s) => { self.roms = Some(s); self.busy = false; },
-                Msg::Token { token, erase } => { self.validate_token = Some(token); self.erase_flag = Some(erase); self.busy = false; },
-                Msg::Progress { sent, total } => { self.progress = Some((sent, total)); },
-                Msg::FlashDone(res) => { self.busy = false; self.erase_confirmed = false; self.cancel_token = None; self.last_flash_failed = res.is_err(); if let Err(e)=res { self.last_error = Some(e); } },
+                Msg::Error(e) => {
+                    self.last_error = Some(e.clone());
+                    self.push_log(format!("Error: {}", e));
+                    self.status = "Error".into();
+                    self.busy = false;
+                }
+                Msg::DeviceInfo(info) => {
+                    self.device_info = Some(info);
+                    self.busy = false;
+                }
+                Msg::Roms(s) => {
+                    self.roms = Some(s);
+                    self.busy = false;
+                }
+                Msg::Token { token, erase } => {
+                    self.validate_token = Some(token);
+                    self.erase_flag = Some(erase);
+                    self.busy = false;
+                }
+                Msg::Progress { sent, total } => {
+                    self.progress = Some((sent, total));
+                }
+                Msg::FlashDone(res) => {
+                    self.busy = false;
+                    self.erase_confirmed = false;
+                    self.cancel_token = None;
+                    self.last_flash_failed = res.is_err();
+                    if let Err(e) = res {
+                        self.last_error = Some(e);
+                    }
+                }
             }
         }
 
@@ -299,10 +468,15 @@ impl eframe::App for App {
             ui.heading("MAF – MiAssistantFork");
             ui.horizontal(|ui| {
                 ui.label(&self.status);
-                if let Some(err) = &self.last_error { ui.colored_label(egui::Color32::LIGHT_RED, format!("  {}", err)); }
+                if let Some(err) = &self.last_error {
+                    ui.colored_label(egui::Color32::LIGHT_RED, format!("  {}", err));
+                }
                 ui.separator();
                 egui::ComboBox::from_label("")
-                    .selected_text(match self.language { Language::En => "EN", Language::Es => "ES" })
+                    .selected_text(match self.language {
+                        Language::En => "EN",
+                        Language::Es => "ES",
+                    })
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.language, Language::En, "EN");
                         ui.selectable_value(&mut self.language, Language::Es, "ES");
@@ -310,93 +484,200 @@ impl eframe::App for App {
             });
         });
 
-        egui::SidePanel::left("left").resizable(true).show(ctx, |ui| {
-            ui.heading("Actions");
-            ui.add_enabled_ui(!self.busy, |ui| {
-                if ui.button(self.t("Refresh Devices")).clicked() {
-                    match usb::list_adb_devices() { Ok(list) => { self.devices = list; }, Err(e) => self.push_log(format!("USB error: {}", e)) }
-                }
-                if !self.devices.is_empty() {
-                    ui.label(self.t("Select device:"));
-                    let mut idx = self.selected_device.and_then(|(bus,addr)| self.devices.iter().position(|d| d.bus==bus && d.address==addr)).unwrap_or(0);
-                    let labels: Vec<String> = self.devices.iter().map(|d| format!("Bus {} Addr {} - {:04x}:{:04x}", d.bus, d.address, d.vendor_id, d.product_id)).collect();
-                    egui::ComboBox::from_label("")
-                        .selected_text(labels.get(idx).cloned().unwrap_or_else(|| "<select>".into()))
-                        .show_ui(ui, |ui| {
-                            for (i, l) in labels.iter().enumerate() { if ui.selectable_label(i==idx, l).clicked() { idx = i; } }
-                        });
-                    if let Some(sel) = self.devices.get(idx) { self.selected_device = Some((sel.bus, sel.address)); }
-                }
-                if ui.button(self.t("Detect Device")).clicked() { self.action_detect(); }
-                if ui.button(self.t("Read Info")).clicked() { self.action_detect(); }
-                if ui.button(self.t("List ROMs")).clicked() { self.action_list_roms(); }
-                if ui.button(self.t("Pick ROM File")).clicked() { self.action_pick_file(); }
-                if ui.button(self.t("Get Token")).clicked() { self.action_get_token(); }
-                if ui.button(self.t("Flash")).clicked() { self.action_flash(); }
-                if !self.busy {
-                    if let Some(f) = &self.selected_file {
-                        if std::path::Path::new(&format!("{}.sideload.state", f)).exists() && ui.button("Resume Flash").clicked() {
-                            self.erase_confirmed = true;
-                            self.action_flash();
+        egui::SidePanel::left("left")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Actions");
+                ui.add_enabled_ui(!self.busy, |ui| {
+                    if ui.button(self.t("Refresh Devices")).clicked() {
+                        match usb::list_adb_devices() {
+                            Ok(list) => {
+                                self.devices = list;
+                            }
+                            Err(e) => self.push_log(format!("USB error: {}", e)),
                         }
                     }
-                }
-                if self.last_flash_failed && !self.busy && ui.button(self.t("Retry Flash")).clicked() {
-                    self.last_flash_failed = false;
-                    self.action_flash();
-                }
-                if self.cancel_token.is_some() && self.busy && ui.button(self.t("Cancel Flash")).clicked() {
-                    if let Some(c) = &self.cancel_token { c.store(true, Ordering::Relaxed); }
-                }
-                if ui.button(self.t("Format Data")).clicked() {
-                    // quick inline action: do not block UI
-                    let selected = self.selected_device;
-                    self.start_task(move |tx| {
-                        let maybe_dev = match selected {
-                            Some((bus, addr)) => usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb()),
-                            None => usb::find_first_adb(),
-                        };
-                        let mut dev = match maybe_dev { Ok(d) => d, Err(e) => { tx.send(Msg::Error(format!("{}", e))).ok(); return; } };
-                        let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 5_000 };
-                        if let Err(e) = t.connect() { tx.send(Msg::Error(format!("ADB connect failed: {}", e))).ok(); return; }
-                        match t.simple_command("format-data:") {
-                            Ok(_) => {
-                                let _ = t.simple_command("reboot:");
-                                let _ = tx.send(Msg::Status("Format requested".to_string()));
+                    if !self.devices.is_empty() {
+                        ui.label(self.t("Select device:"));
+                        let mut idx = self
+                            .selected_device
+                            .and_then(|(bus, addr)| {
+                                self.devices
+                                    .iter()
+                                    .position(|d| d.bus == bus && d.address == addr)
+                            })
+                            .unwrap_or(0);
+                        let labels: Vec<String> = self
+                            .devices
+                            .iter()
+                            .map(|d| {
+                                format!(
+                                    "Bus {} Addr {} - {:04x}:{:04x}",
+                                    d.bus, d.address, d.vendor_id, d.product_id
+                                )
+                            })
+                            .collect();
+                        egui::ComboBox::from_label("")
+                            .selected_text(
+                                labels
+                                    .get(idx)
+                                    .cloned()
+                                    .unwrap_or_else(|| "<select>".into()),
+                            )
+                            .show_ui(ui, |ui| {
+                                for (i, l) in labels.iter().enumerate() {
+                                    if ui.selectable_label(i == idx, l).clicked() {
+                                        idx = i;
+                                    }
+                                }
+                            });
+                        if let Some(sel) = self.devices.get(idx) {
+                            self.selected_device = Some((sel.bus, sel.address));
+                        }
+                    }
+                    if ui.button(self.t("Detect Device")).clicked() {
+                        self.action_detect();
+                    }
+                    if ui.button(self.t("Read Info")).clicked() {
+                        self.action_detect();
+                    }
+                    if ui.button(self.t("List ROMs")).clicked() {
+                        self.action_list_roms();
+                    }
+                    if ui.button(self.t("Pick ROM File")).clicked() {
+                        self.action_pick_file();
+                    }
+                    if ui.button(self.t("Get Token")).clicked() {
+                        self.action_get_token();
+                    }
+                    if ui.button(self.t("Flash")).clicked() {
+                        self.action_flash();
+                    }
+                    if !self.busy {
+                        if let Some(f) = &self.selected_file {
+                            if std::path::Path::new(&format!("{}.sideload.state", f)).exists()
+                                && ui.button("Resume Flash").clicked()
+                            {
+                                self.erase_confirmed = true;
+                                self.action_flash();
                             }
-                            Err(e) => { let _ = tx.send(Msg::Error(format!("Format failed: {}", e))); }
                         }
-                    });
+                    }
+                    if self.last_flash_failed
+                        && !self.busy
+                        && ui.button(self.t("Retry Flash")).clicked()
+                    {
+                        self.last_flash_failed = false;
+                        self.action_flash();
+                    }
+                    if self.cancel_token.is_some()
+                        && self.busy
+                        && ui.button(self.t("Cancel Flash")).clicked()
+                    {
+                        if let Some(c) = &self.cancel_token {
+                            c.store(true, Ordering::Relaxed);
+                        }
+                    }
+                    if ui.button(self.t("Format Data")).clicked() {
+                        // quick inline action: do not block UI
+                        let selected = self.selected_device;
+                        self.start_task(move |tx| {
+                            let maybe_dev = match selected {
+                                Some((bus, addr)) => usb::open_by_location(bus, addr)
+                                    .or_else(|_| usb::find_first_adb()),
+                                None => usb::find_first_adb(),
+                            };
+                            let mut dev = match maybe_dev {
+                                Ok(d) => d,
+                                Err(e) => {
+                                    tx.send(Msg::Error(format!("{}", e))).ok();
+                                    return;
+                                }
+                            };
+                            let mut t = adb::AdbTransport {
+                                dev: &mut dev,
+                                timeout_ms: 5_000,
+                            };
+                            if let Err(e) = t.connect() {
+                                tx.send(Msg::Error(format!("ADB connect failed: {}", e)))
+                                    .ok();
+                                return;
+                            }
+                            match t.simple_command("format-data:") {
+                                Ok(_) => {
+                                    let _ = t.simple_command("reboot:");
+                                    let _ = tx.send(Msg::Status("Format requested".to_string()));
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(Msg::Error(format!("Format failed: {}", e)));
+                                }
+                            }
+                        });
+                    }
+                    if ui.button(self.t("Reboot")).clicked() {
+                        let selected = self.selected_device;
+                        self.start_task(move |tx| {
+                            let maybe_dev = match selected {
+                                Some((bus, addr)) => usb::open_by_location(bus, addr)
+                                    .or_else(|_| usb::find_first_adb()),
+                                None => usb::find_first_adb(),
+                            };
+                            let mut dev = match maybe_dev {
+                                Ok(d) => d,
+                                Err(e) => {
+                                    tx.send(Msg::Error(format!("{}", e))).ok();
+                                    return;
+                                }
+                            };
+                            let mut t = adb::AdbTransport {
+                                dev: &mut dev,
+                                timeout_ms: 5_000,
+                            };
+                            if let Err(e) = t.connect() {
+                                tx.send(Msg::Error(format!("ADB connect failed: {}", e)))
+                                    .ok();
+                                return;
+                            }
+                            match t.simple_command("reboot:") {
+                                Ok(_) => {
+                                    let _ = tx.send(Msg::Status("Reboot requested".to_string()));
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(Msg::Error(format!("Reboot failed: {}", e)));
+                                }
+                            }
+                        });
+                    }
+                });
+
+                ui.separator();
+                ui.label(self.t("Selected file:"));
+                ui.monospace(
+                    self.selected_file
+                        .clone()
+                        .unwrap_or_else(|| "<none>".into()),
+                );
+                if let Some(token) = &self.validate_token {
+                    ui.label(self.t("Token:"));
+                    ui.monospace(token);
                 }
-                if ui.button(self.t("Reboot")).clicked() {
-                    let selected = self.selected_device;
-                    self.start_task(move |tx| {
-                        let maybe_dev = match selected {
-                            Some((bus, addr)) => usb::open_by_location(bus, addr).or_else(|_| usb::find_first_adb()),
-                            None => usb::find_first_adb(),
-                        };
-                        let mut dev = match maybe_dev { Ok(d) => d, Err(e) => { tx.send(Msg::Error(format!("{}", e))).ok(); return; } };
-                        let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 5_000 };
-                        if let Err(e) = t.connect() { tx.send(Msg::Error(format!("ADB connect failed: {}", e))).ok(); return; }
-                        match t.simple_command("reboot:") {
-                            Ok(_) => { let _ = tx.send(Msg::Status("Reboot requested".to_string())); }
-                            Err(e) => { let _ = tx.send(Msg::Error(format!("Reboot failed: {}", e))); }
-                        }
-                    });
+                if let Some(erase) = self.erase_flag {
+                    if erase {
+                        ui.colored_label(egui::Color32::RED, self.t("EraseYes"));
+                    } else {
+                        ui.label(self.t("EraseNo"));
+                    }
+                }
+                if let Some((sent, total)) = self.progress {
+                    let frac = if total > 0 {
+                        sent as f32 / total as f32
+                    } else {
+                        0.0
+                    };
+                    ui.add(egui::ProgressBar::new(frac).show_percentage());
+                    ui.label(format!("{}/{} bytes", sent, total));
                 }
             });
-
-            ui.separator();
-            ui.label(self.t("Selected file:"));
-            ui.monospace(self.selected_file.clone().unwrap_or_else(|| "<none>".into()));
-            if let Some(token) = &self.validate_token { ui.label(self.t("Token:")); ui.monospace(token); }
-            if let Some(erase) = self.erase_flag { if erase { ui.colored_label(egui::Color32::RED, self.t("EraseYes")); } else { ui.label(self.t("EraseNo")); } }
-            if let Some((sent,total)) = self.progress {
-                let frac = if total > 0 { sent as f32 / total as f32 } else { 0.0 };
-                ui.add(egui::ProgressBar::new(frac).show_percentage());
-                ui.label(format!("{}/{} bytes", sent, total));
-            }
-        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading(self.t("Device Info"));
@@ -407,11 +688,17 @@ impl eframe::App for App {
             }
             ui.separator();
             ui.heading(self.t("ROMs"));
-            if let Some(r) = &self.roms { ui.monospace(r); } else { ui.label("<none>"); }
+            if let Some(r) = &self.roms {
+                ui.monospace(r);
+            } else {
+                ui.label("<none>");
+            }
             ui.separator();
             ui.heading(self.t("Logs"));
             egui::ScrollArea::vertical().show(ui, |ui| {
-                for l in &self.logs { ui.monospace(l); }
+                for l in &self.logs {
+                    ui.monospace(l);
+                }
             });
 
             // Confirm erase dialog
@@ -424,7 +711,9 @@ impl eframe::App for App {
                         ui.colored_label(egui::Color32::RED, self.t("WipeMsg"));
                         ui.separator();
                         ui.horizontal(|ui| {
-                            if ui.button(self.t("Cancel")).clicked() { self.confirm_erase_dialog = false; }
+                            if ui.button(self.t("Cancel")).clicked() {
+                                self.confirm_erase_dialog = false;
+                            }
                             if ui.button(self.t("Proceed")).clicked() {
                                 self.confirm_erase_dialog = false;
                                 self.erase_confirmed = true;

@@ -1,13 +1,13 @@
-use crate::errors::{Result, Error};
+use crate::errors::{Error, Result};
 use crate::usb::OpenDevice;
-use tracing::{trace, debug, instrument};
 use std::convert::TryInto;
+use tracing::{debug, instrument, trace};
 
 pub const ADB_CONNECT: u32 = 0x4E584E43; // CNXN
-pub const ADB_OPEN: u32    = 0x4E45504F; // OPEN
-pub const ADB_OKAY: u32    = 0x59414B4F; // OKAY
-pub const ADB_WRTE: u32    = 0x45545257; // WRTE
-pub const ADB_CLSE: u32    = 0x45534C43; // CLSE
+pub const ADB_OPEN: u32 = 0x4E45504F; // OPEN
+pub const ADB_OKAY: u32 = 0x59414B4F; // OKAY
+pub const ADB_WRTE: u32 = 0x45545257; // WRTE
+pub const ADB_CLSE: u32 = 0x45534C43; // CLSE
 
 pub const ADB_MAX_DATA: u32 = 1024 * 1024;
 
@@ -24,7 +24,14 @@ pub struct AdbPacket {
 
 impl AdbPacket {
     pub fn new(cmd: u32, arg0: u32, arg1: u32, len: u32) -> Self {
-        Self { cmd, arg0, arg1, len, checksum: 0, magic: cmd ^ 0xffffffff }
+        Self {
+            cmd,
+            arg0,
+            arg1,
+            len,
+            checksum: 0,
+            magic: cmd ^ 0xffffffff,
+        }
     }
 }
 
@@ -36,22 +43,33 @@ pub struct AdbTransport<'a> {
 impl<'a> AdbTransport<'a> {
     #[instrument(skip(self, payload), fields(cmd, len))]
     pub fn send(&mut self, pkt: &AdbPacket, payload: Option<&[u8]>) -> Result<()> {
-    let cmd = pkt.cmd; // copy for tracing (avoid packed reference)
-    let len = pkt.len;
+        let cmd = pkt.cmd; // copy for tracing (avoid packed reference)
+        let len = pkt.len;
         let header = encode_header(pkt);
-        self.dev.bulk_write(self.dev.endpoints.bulk_out, &header, self.timeout_ms)?;
-    if let Some(data) = payload { if !data.is_empty() { self.dev.bulk_write(self.dev.endpoints.bulk_out, data, self.timeout_ms)?; } }
-    trace!(cmd = format_args!("{:#X}", cmd), len, "sent packet");
+        self.dev
+            .bulk_write(self.dev.endpoints.bulk_out, &header, self.timeout_ms)?;
+        if let Some(data) = payload {
+            if !data.is_empty() {
+                self.dev
+                    .bulk_write(self.dev.endpoints.bulk_out, data, self.timeout_ms)?;
+            }
+        }
+        trace!(cmd = format_args!("{:#X}", cmd), len, "sent packet");
         Ok(())
     }
 
     #[instrument(skip(self, buf), fields(timeout_ms = self.timeout_ms))]
     pub fn recv(&mut self, buf: &mut Vec<u8>) -> Result<AdbPacket> {
         let mut header = [0u8; 24];
-        self.dev.bulk_read(self.dev.endpoints.bulk_in, &mut header, self.timeout_ms)?;
+        self.dev
+            .bulk_read(self.dev.endpoints.bulk_in, &mut header, self.timeout_ms)?;
         let pkt = decode_header(&header)?;
         buf.clear();
-        if pkt.len > 0 { buf.resize(pkt.len as usize, 0); self.dev.bulk_read(self.dev.endpoints.bulk_in, buf, self.timeout_ms)?; }
+        if pkt.len > 0 {
+            buf.resize(pkt.len as usize, 0);
+            self.dev
+                .bulk_read(self.dev.endpoints.bulk_in, buf, self.timeout_ms)?;
+        }
         trace!(?pkt, size = buf.len(), "recv packet");
         Ok(pkt)
     }
@@ -59,10 +77,15 @@ impl<'a> AdbTransport<'a> {
     #[instrument(skip(self), fields(cmd))]
     pub fn simple_command(&mut self, cmd: &str) -> Result<String> {
         let payload = cmd.as_bytes();
-        self.send(&AdbPacket::new(ADB_OPEN, 1, 0, payload.len() as u32), Some(payload))?;
+        self.send(
+            &AdbPacket::new(ADB_OPEN, 1, 0, payload.len() as u32),
+            Some(payload),
+        )?;
         let mut data = Vec::new();
         let p = self.recv(&mut data)?; // expect WRTE or OKAY then WRTE
-        if p.cmd == ADB_OKAY { let _ = self.recv(&mut data)?; }
+        if p.cmd == ADB_OKAY {
+            let _ = self.recv(&mut data)?;
+        }
         // send OKAY back
         self.send(&AdbPacket::new(ADB_OKAY, p.arg1, p.arg0, 0), None)?;
         // read CLSE (ignore payload)
@@ -74,10 +97,24 @@ impl<'a> AdbTransport<'a> {
     pub fn connect(&mut self) -> Result<String> {
         // Construct banner: host::
         let banner = b"host::\0"; // include NUL
-        self.send(&AdbPacket::new(ADB_CONNECT, 0x01000001, crate::adb::ADB_MAX_DATA, banner.len() as u32), Some(banner))?;
+        self.send(
+            &AdbPacket::new(
+                ADB_CONNECT,
+                0x01000001,
+                crate::adb::ADB_MAX_DATA,
+                banner.len() as u32,
+            ),
+            Some(banner),
+        )?;
         let mut data = Vec::new();
         let pkt = self.recv(&mut data)?;
-        if pkt.cmd != ADB_CONNECT { let cmd = pkt.cmd; return Err(Error::Protocol(format!("Expected CNXN reply, got {:x}", cmd))); }
+        if pkt.cmd != ADB_CONNECT {
+            let cmd = pkt.cmd;
+            return Err(Error::Protocol(format!(
+                "Expected CNXN reply, got {:x}",
+                cmd
+            )));
+        }
         let banner_str = String::from_utf8_lossy(&data).to_string();
         debug!(?banner_str, "connected banner");
         Ok(banner_str)
@@ -86,8 +123,8 @@ impl<'a> AdbTransport<'a> {
 
 // --- Header encode/decode helpers (testable & fuzzable) ---
 
-pub fn encode_header(pkt: &AdbPacket) -> [u8;24] {
-    let mut header = [0u8;24];
+pub fn encode_header(pkt: &AdbPacket) -> [u8; 24] {
+    let mut header = [0u8; 24];
     header[0..4].copy_from_slice(&pkt.cmd.to_le_bytes());
     header[4..8].copy_from_slice(&pkt.arg0.to_le_bytes());
     header[8..12].copy_from_slice(&pkt.arg1.to_le_bytes());
@@ -97,7 +134,7 @@ pub fn encode_header(pkt: &AdbPacket) -> [u8;24] {
     header
 }
 
-pub fn decode_header(buf: &[u8;24]) -> Result<AdbPacket> {
+pub fn decode_header(buf: &[u8; 24]) -> Result<AdbPacket> {
     let pkt = AdbPacket {
         cmd: u32::from_le_bytes(buf[0..4].try_into().unwrap()),
         arg0: u32::from_le_bytes(buf[4..8].try_into().unwrap()),
@@ -107,8 +144,12 @@ pub fn decode_header(buf: &[u8;24]) -> Result<AdbPacket> {
         magic: u32::from_le_bytes(buf[20..24].try_into().unwrap()),
     };
     // Basic validation
-    if pkt.magic != (pkt.cmd ^ 0xffffffff) { return Err(Error::Protocol("magic mismatch".into())); }
-    if pkt.len > ADB_MAX_DATA { return Err(Error::Protocol("payload too large".into())); }
+    if pkt.magic != (pkt.cmd ^ 0xffffffff) {
+        return Err(Error::Protocol("magic mismatch".into()));
+    }
+    if pkt.len > ADB_MAX_DATA {
+        return Err(Error::Protocol("payload too large".into()));
+    }
     Ok(pkt)
 }
 
@@ -121,13 +162,13 @@ mod tests {
         let pkt = AdbPacket::new(ADB_OPEN, 12, 34, 56);
         let hdr = encode_header(&pkt);
         let out = decode_header(&hdr).unwrap();
-    let (c,a0,a1,l,m) = (out.cmd, out.arg0, out.arg1, out.len, out.magic);
-    let (pc,pa0,pa1,pl,pm) = (pkt.cmd, pkt.arg0, pkt.arg1, pkt.len, pkt.magic);
-    assert_eq!(pc, c);
-    assert_eq!(pa0, a0);
-    assert_eq!(pa1, a1);
-    assert_eq!(pl, l);
-    assert_eq!(pm, m);
+        let (c, a0, a1, l, m) = (out.cmd, out.arg0, out.arg1, out.len, out.magic);
+        let (pc, pa0, pa1, pl, pm) = (pkt.cmd, pkt.arg0, pkt.arg1, pkt.len, pkt.magic);
+        assert_eq!(pc, c);
+        assert_eq!(pa0, a0);
+        assert_eq!(pa1, a1);
+        assert_eq!(pl, l);
+        assert_eq!(pm, m);
     }
 
     #[test]
@@ -137,14 +178,17 @@ mod tests {
         // corrupt magic
         hdr[20] ^= 0xFF;
         let err = decode_header(&hdr).unwrap_err();
-        match err { Error::Protocol(m) => assert!(m.contains("magic")), _ => panic!("unexpected error") }
+        match err {
+            Error::Protocol(m) => assert!(m.contains("magic")),
+            _ => panic!("unexpected error"),
+        }
     }
 
     #[test]
     fn oversize_payload_rejected() {
         let pkt = AdbPacket::new(ADB_WRTE, 0, 0, ADB_MAX_DATA + 1);
         // encode manually to bypass size check
-        let mut hdr = [0u8;24];
+        let mut hdr = [0u8; 24];
         hdr[0..4].copy_from_slice(&pkt.cmd.to_le_bytes());
         hdr[4..8].copy_from_slice(&pkt.arg0.to_le_bytes());
         hdr[8..12].copy_from_slice(&pkt.arg1.to_le_bytes());
@@ -152,7 +196,9 @@ mod tests {
         hdr[16..20].copy_from_slice(&pkt.checksum.to_le_bytes());
         hdr[20..24].copy_from_slice(&pkt.magic.to_le_bytes());
         let err = decode_header(&hdr).unwrap_err();
-        match err { Error::Protocol(m) => assert!(m.contains("payload")), _ => panic!("unexpected error") }
+        match err {
+            Error::Protocol(m) => assert!(m.contains("payload")),
+            _ => panic!("unexpected error"),
+        }
     }
 }
-

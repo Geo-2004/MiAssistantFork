@@ -1,7 +1,7 @@
-use md5::Context;
-use std::io::{Read};
-use std::fs::File;
 use crate::errors::Result;
+use md5::Context;
+use std::fs::File;
+use std::io::Read;
 
 pub fn md5_file(path: &str) -> Result<String> {
     let mut file = File::open(path)?;
@@ -9,7 +9,9 @@ pub fn md5_file(path: &str) -> Result<String> {
     let mut buf = [0u8; 1024 * 1024]; // 1 MiB chunks
     loop {
         let n = file.read(&mut buf)?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         ctx.consume(&buf[..n]);
     }
     let digest = ctx.compute();

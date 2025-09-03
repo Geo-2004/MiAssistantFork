@@ -1,12 +1,14 @@
-use crate::errors::{Result, Error};
+use crate::errors::{Error, Result};
 use base64::{engine::general_purpose, Engine as _};
-use serde::{Serialize, Deserialize};
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Serialize)]
-struct Options { zone: String }
+struct Options {
+    zone: String,
+}
 #[derive(Serialize)]
 struct RequestPayload<'a> {
     d: &'a str,
@@ -27,25 +29,36 @@ fn pkcs7_pad(mut data: Vec<u8>) -> Vec<u8> {
     data
 }
 
-fn aes128_cbc_encrypt(key: &[u8;16], iv: &[u8;16], plain: &[u8]) -> Result<Vec<u8>> {
+fn aes128_cbc_encrypt(key: &[u8; 16], iv: &[u8; 16], plain: &[u8]) -> Result<Vec<u8>> {
     // Pure Rust: use aes + cbc crates, but to keep deps minimal we implement via openssl feature if enabled
-    #[cfg(feature = "openssl")] {
+    #[cfg(feature = "openssl")]
+    {
         use openssl::symm::{Cipher, Crypter, Mode};
         let cipher = Cipher::aes_128_cbc();
-        let mut c = Crypter::new(cipher, Mode::Encrypt, key, Some(iv)).map_err(|e| Error::Crypto(e.to_string()))?;
+        let mut c = Crypter::new(cipher, Mode::Encrypt, key, Some(iv))
+            .map_err(|e| Error::Crypto(e.to_string()))?;
         let mut out = vec![0u8; plain.len() + cipher.block_size()];
-        let mut count = c.update(plain, &mut out).map_err(|e| Error::Crypto(e.to_string()))?;
-        count += c.finalize(&mut out[count..]).map_err(|e| Error::Crypto(e.to_string()))?;
-    out.truncate(count); Ok(out)
+        let mut count = c
+            .update(plain, &mut out)
+            .map_err(|e| Error::Crypto(e.to_string()))?;
+        count += c
+            .finalize(&mut out[count..])
+            .map_err(|e| Error::Crypto(e.to_string()))?;
+        out.truncate(count);
+        Ok(out)
     }
     #[cfg(not(feature = "openssl"))]
     {
-        use aes::Aes128; use cbc::cipher::{KeyIvInit, BlockEncryptMut, block_padding::Pkcs7};
+        use aes::Aes128;
+        use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
         type Aes128CbcEnc = cbc::Encryptor<Aes128>;
         let mut buf = vec![0u8; plain.len() + 16];
         buf[..plain.len()].copy_from_slice(plain);
-        let enc = Aes128CbcEnc::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
-        let encrypted = enc.encrypt_padded_mut::<Pkcs7>(&mut buf, plain.len()).map_err(|e| Error::Crypto(e.to_string()))?;
+        let enc =
+            Aes128CbcEnc::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
+        let encrypted = enc
+            .encrypt_padded_mut::<Pkcs7>(&mut buf, plain.len())
+            .map_err(|e| Error::Crypto(e.to_string()))?;
         Ok(encrypted.to_vec())
     }
 }
@@ -64,7 +77,9 @@ pub enum ValidationResult {
     FlashToken { token: String, erase: bool },
 }
 
-pub struct Validator { client: Client }
+pub struct Validator {
+    client: Client,
+}
 impl Validator {
     pub fn new() -> Result<Self> {
         // Align with legacy tool behavior: MiTunes UA and form POSTs
@@ -72,19 +87,45 @@ impl Validator {
             client: Client::builder()
                 .user_agent("MiTunes_UserAgent_v3.0")
                 .timeout(std::time::Duration::from_secs(20))
-                .build()?
+                .build()?,
         })
     }
-    pub fn validate(&self, info: &crate::device::DeviceInfo, md5: &str, flash: bool) -> Result<ValidationResult> {
-        let key = [0x6D,0x69,0x75,0x69,0x6F,0x74,0x61,0x76,0x61,0x6C,0x69,0x64,0x65,0x64,0x31,0x31];
-        let iv  = [0x30,0x31,0x30,0x32,0x30,0x33,0x30,0x34,0x30,0x35,0x30,0x36,0x30,0x37,0x30,0x38];
-        let payload = RequestPayload { d:&info.device, v:&info.version, c:&info.codebase, b:&info.branch, sn:&info.sn, l:"en-US", f:"1", options: Options { zone: info.romzone.clone() }, pkg: md5 };
+    pub fn validate(
+        &self,
+        info: &crate::device::DeviceInfo,
+        md5: &str,
+        flash: bool,
+    ) -> Result<ValidationResult> {
+        let key = [
+            0x6D, 0x69, 0x75, 0x69, 0x6F, 0x74, 0x61, 0x76, 0x61, 0x6C, 0x69, 0x64, 0x65, 0x64,
+            0x31, 0x31,
+        ];
+        let iv = [
+            0x30, 0x31, 0x30, 0x32, 0x30, 0x33, 0x30, 0x34, 0x30, 0x35, 0x30, 0x36, 0x30, 0x37,
+            0x30, 0x38,
+        ];
+        let payload = RequestPayload {
+            d: &info.device,
+            v: &info.version,
+            c: &info.codebase,
+            b: &info.branch,
+            sn: &info.sn,
+            l: "en-US",
+            f: "1",
+            options: Options {
+                zone: info.romzone.clone(),
+            },
+            pkg: md5,
+        };
         let json = serde_json::to_vec(&payload).map_err(|e| Error::Other(e.to_string()))?;
         let enc = aes128_cbc_encrypt(&key, &iv, &pkcs7_pad(json))?;
         let b64 = general_purpose::STANDARD.encode(enc);
         let form = format!("q={}&t=&s=1", urlencoding::encode(&b64));
         let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_static("application/x-www-form-urlencoded"),
+        );
         // Some endpoints are picky; emulate curl defaults as closely as needed
         let resp = self
             .client
@@ -96,16 +137,23 @@ impl Validator {
         // decrypt path — server returns base64 text; tolerate stray whitespace
         let mut resp_str = String::from_utf8_lossy(&resp).to_string();
         resp_str.retain(|c| !c.is_whitespace());
-        let decoded = general_purpose::STANDARD.decode(&resp_str).map_err(|e| Error::Crypto(e.to_string()))?;
+        let decoded = general_purpose::STANDARD
+            .decode(&resp_str)
+            .map_err(|e| Error::Crypto(e.to_string()))?;
         let plain = aes128_cbc_decrypt(&key, &iv, &decoded)?;
         // extract json substring
         let text = String::from_utf8_lossy(&plain);
         if let (Some(s), Some(e)) = (text.find('{'), text.rfind('}')) {
             let slice = &text[s..=e];
-            let v: Value = serde_json::from_str(slice).map_err(|e| Error::InvalidResponse(e.to_string()))?;
+            let v: Value =
+                serde_json::from_str(slice).map_err(|e| Error::InvalidResponse(e.to_string()))?;
             if flash {
                 if let Some(pkg_rom) = v.get("PkgRom") {
-                    let token = pkg_rom.get("Validate").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                    let token = pkg_rom
+                        .get("Validate")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("")
+                        .to_string();
                     let erase = pkg_rom.get("Erase").and_then(|x| x.as_str()).unwrap_or("0") == "1";
                     return Ok(ValidationResult::FlashToken { token, erase });
                 }
@@ -118,23 +166,34 @@ impl Validator {
     }
 }
 
-fn aes128_cbc_decrypt(key: &[u8;16], iv: &[u8;16], cipher: &[u8]) -> Result<Vec<u8>> {
-    #[cfg(feature = "openssl")] {
+fn aes128_cbc_decrypt(key: &[u8; 16], iv: &[u8; 16], cipher: &[u8]) -> Result<Vec<u8>> {
+    #[cfg(feature = "openssl")]
+    {
         use openssl::symm::{Cipher, Crypter, Mode};
         let cipher_type = Cipher::aes_128_cbc();
-        let mut c = Crypter::new(cipher_type, Mode::Decrypt, key, Some(iv)).map_err(|e| Error::Crypto(e.to_string()))?;
+        let mut c = Crypter::new(cipher_type, Mode::Decrypt, key, Some(iv))
+            .map_err(|e| Error::Crypto(e.to_string()))?;
         let mut out = vec![0u8; cipher.len() + cipher_type.block_size()];
-        let mut count = c.update(cipher, &mut out).map_err(|e| Error::Crypto(e.to_string()))?;
-        count += c.finalize(&mut out[count..]).map_err(|e| Error::Crypto(e.to_string()))?;
-    out.truncate(count); Ok(out)
+        let mut count = c
+            .update(cipher, &mut out)
+            .map_err(|e| Error::Crypto(e.to_string()))?;
+        count += c
+            .finalize(&mut out[count..])
+            .map_err(|e| Error::Crypto(e.to_string()))?;
+        out.truncate(count);
+        Ok(out)
     }
     #[cfg(not(feature = "openssl"))]
     {
-        use aes::Aes128; use cbc::cipher::{KeyIvInit, BlockDecryptMut, block_padding::Pkcs7};
+        use aes::Aes128;
+        use cbc::cipher::{block_padding::Pkcs7, BlockDecryptMut, KeyIvInit};
         type Aes128CbcDec = cbc::Decryptor<Aes128>;
         let mut buf = cipher.to_vec();
-        let dec = Aes128CbcDec::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
-        let decrypted = dec.decrypt_padded_mut::<Pkcs7>(&mut buf).map_err(|e| Error::Crypto(e.to_string()))?;
+        let dec =
+            Aes128CbcDec::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
+        let decrypted = dec
+            .decrypt_padded_mut::<Pkcs7>(&mut buf)
+            .map_err(|e| Error::Crypto(e.to_string()))?;
         Ok(decrypted.to_vec())
     }
 }

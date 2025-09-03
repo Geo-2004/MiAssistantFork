@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct DeviceInfo {
@@ -13,5 +13,16 @@ pub struct DeviceInfo {
 }
 
 impl DeviceInfo {
-    pub fn unknown() -> Self { Self { device: "unknown".into(), version: "unknown".into(), sn: "unknown".into(), codebase: "unknown".into(), branch: "unknown".into(), language: "unknown".into(), region: "unknown".into(), romzone: "unknown".into() } }
+    pub fn unknown() -> Self {
+        Self {
+            device: "unknown".into(),
+            version: "unknown".into(),
+            sn: "unknown".into(),
+            codebase: "unknown".into(),
+            branch: "unknown".into(),
+            language: "unknown".into(),
+            region: "unknown".into(),
+            romzone: "unknown".into(),
+        }
+    }
 }
