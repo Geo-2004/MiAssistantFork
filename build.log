@@ -1,0 +1,12 @@
+Using built-in specs.
+COLLECT_GCC=C:\msys64\ucrt64\bin\gcc.exe
+COLLECT_LTO_WRAPPER=C:/msys64/ucrt64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/lto-wrapper.exe
+Target: x86_64-w64-mingw32
+Configured with: ../gcc-15.2.0/configure --prefix=/ucrt64 --with-local-prefix=/ucrt64/local --with-native-system-header-dir=/ucrt64/include --libexecdir=/ucrt64/lib --enable-bootstrap --enable-checking=release --with-arch=nocona --with-tune=generic --enable-mingw-wildcard --enable-languages=c,lto,c++,fortran,ada,objc,obj-c++,jit --enable-shared --enable-static --enable-libatomic --enable-threads=posix --enable-graphite --enable-fully-dynamic-string --enable-libstdcxx-backtrace=yes --enable-libstdcxx-filesystem-ts --enable-libstdcxx-time --disable-libstdcxx-pch --enable-lto --enable-libgomp --disable-libssp --disable-multilib --disable-rpath --disable-win32-registry --disable-nls --disable-werror --disable-symvers --with-libiconv --with-system-zlib --with-gmp=/ucrt64 --with-mpfr=/ucrt64 --with-mpc=/ucrt64 --with-isl=/ucrt64 --with-pkgversion='Rev8, Built by MSYS2 project' --with-bugurl=https://github.com/msys2/MINGW-packages/issues --with-gnu-as --with-gnu-ld --with-libstdcxx-zoneinfo=yes --disable-libstdcxx-debug --enable-plugin --with-boot-ldflags=-static-libstdc++ --with-stage1-ldflags=-static-libstdc++
+Thread model: posix
+Supported LTO compression algorithms: zlib zstd
+gcc version 15.2.0 (Rev8, Built by MSYS2 project) 
+COLLECT_GCC_OPTIONS='-v' '-Wall' '-O2' '-I' '.' '-o' 'miasst_windows64.exe' '-I' 'C:/msys64/ucrt64/include/libusb-1.0' '-mtune=generic' '-march=nocona' '-dumpdir' 'miasst_windows64-'
+ C:/msys64/ucrt64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -I . -I C:/msys64/ucrt64/include/libusb-1.0 -iprefix C:/msys64/ucrt64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -D_REENTRANT miasst_patched.c -quiet -dumpdir miasst_windows64- -dumpbase miasst_patched.c -dumpbase-ext .c -mtune=generic -march=nocona -O2 -Wall -version -o C:\msys64\tmp\ccCkO5mR.s
+COLLECT_GCC_OPTIONS='-v' '-Wall' '-O2' '-I' '.' '-o' 'miasst_windows64.exe' '-I' 'C:/msys64/ucrt64/include/libusb-1.0' '-mtune=generic' '-march=nocona' '-dumpdir' 'miasst_windows64-'
+ C:/msys64/ucrt64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -I . -I C:/msys64/ucrt64/include/libusb-1.0 -iprefix C:/msys64/ucrt64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -D_REENTRANT tiny-json/tiny-json.c -quiet -dumpdir miasst_windows64- -dumpbase tiny-json.c -dumpbase-ext .c -mtune=generic -march=nocona -O2 -Wall -version -o C:\msys64\tmp\ccCkO5mR.s
