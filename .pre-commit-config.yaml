@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: rustfmt
+        name: cargo-fmt
+        entry: bash -lc "rustup component add rustfmt >/dev/null 2>&1; cargo fmt --all -- --check"
+        language: system
+        files: "\\.rs$"
+        stages: [commit]
+
+      - id: clippy-advice
+        name: cargo-clippy-advice
+        # Run clippy but don't fail the commit by default; set PRE_COMMIT_STRICT=1 to make it blocking.
+        entry: bash -lc 'rustup component add clippy >/dev/null 2>&1; if [ "${PRE_COMMIT_STRICT:-}" = "1" ]; then RUSTFLAGS="-D warnings" cargo clippy --workspace --all-targets --features ui -- -D warnings; else RUSTFLAGS="-D warnings" cargo clippy --workspace --all-targets --features ui -- -D warnings || true; fi'
+        language: system
+        files: "\\.rs$"
+        stages: [commit]

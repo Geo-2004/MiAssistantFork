@@ -79,6 +79,28 @@ You can build the GUI from source (requires Rust) or download a pre-built packag
 cargo run -p miassistant-gui --features ui
 ```
 
+## Developer setup (formatting & pre-commit hooks)
+
+To avoid CI format/clippy failures, install and enable the pre-commit hooks used by this repository:
+
+```bash
+# Install pre-commit (one-time)
+python -m pip install --user pre-commit
+
+# Install hooks for this repo
+pre-commit install
+
+# Run hooks on all files (one-off)
+pre-commit run --all-files
+
+# If you prefer strict checks locally, enable strict mode
+export PRE_COMMIT_STRICT=1
+pre-commit run --all-files
+```
+
+Alternatively the repository contains a fallback git hook at `.githooks/pre-commit` (already configured when you clone this repo), which runs `cargo fmt --all` and clippy unless you set `SKIP_CLIPPY=1`.
+
+
 GUI features (cross‑platform, eframe/egui):
 - Device detection + info display
 - ROM listing from Xiaomi (auth-compatible)
