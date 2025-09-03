@@ -1,0 +1,27 @@
+#!/bin/sh
+set -e
+# Simple pre-commit hook: ensure code is formatted and (optionally) passes clippy.
+echo "Running pre-commit checks: rustfmt (required) and clippy (optional)."
+
+# Ensure rustfmt and clippy components are available
+rustup component add rustfmt >/dev/null 2>&1 || true
+rustup component add clippy >/dev/null 2>&1 || true
+
+echo "Checking formatting..."
+cargo fmt --all -- --check || {
+  echo "\nERROR: Code is not formatted. Run: cargo fmt --all" >&2
+  exit 1
+}
+
+if [ -z "${SKIP_CLIPPY}" ]; then
+  echo "Running clippy (will fail on warnings)..."
+  RUSTFLAGS='-D warnings' cargo clippy --workspace --all-targets --features ui -- -D warnings || {
+    echo "\nERROR: clippy reported errors/warnings. Fix them or set SKIP_CLIPPY=1 to bypass locally." >&2
+    exit 1
+  }
+else
+  echo "SKIP_CLIPPY set; skipping clippy checks."
+fi
+
+echo "Pre-commit checks passed."
+exit 0

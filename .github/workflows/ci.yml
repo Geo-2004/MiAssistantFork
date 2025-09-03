@@ -28,11 +28,11 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Format check
+        run: cargo fmt --all -- --check
       - name: Build (workspace + GUI)
         run: cargo build --workspace --locked --features ui
       - name: Lint (clippy)
         run: cargo clippy --workspace --all-targets --features ui -- -D warnings
-      - name: Format check
-        run: cargo fmt --all -- --check
       - name: Test
         run: cargo test --workspace --locked
