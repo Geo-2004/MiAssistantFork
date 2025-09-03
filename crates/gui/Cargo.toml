@@ -2,16 +2,32 @@
 name = "miassistant-gui"
 version = "0.1.0"
 edition = "2021"
-description = "(Experimental) GUI for MiAssistantTool v2"
+description = "MAF GUI (Experimental) – Xiaomi recovery flash & rescue"
+
+[package.metadata.bundle]
+name = "MiAssistantTool"
+identifier = "com.miassistant.tool"
+icon = []
+category = "public.app-category.utilities"
+short_description = "Xiaomi Mi Assistant Tool"
+copyright = "MiAssistantTool Contributors"
 
 [dependencies]
 miassistant-core = { path = "../core" }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 anyhow.workspace = true
+serde = { version = "1", features = ["derive"] }
 egui = { version = "0.28", optional = true }
 eframe = { version = "0.28", optional = true }
+serde_json.workspace = true
+rfd = { version = "0.14", optional = true }
 
 [features]
 default = []
-ui = ["egui", "eframe"]
+ui = ["egui", "eframe", "rfd"]
+
+[package.metadata.wix]
+upgrade-guid = "F2E8C6E4-6B9B-4D1D-9C7E-05E7F3B14F6A"
+license = "MIT"
+eula = false

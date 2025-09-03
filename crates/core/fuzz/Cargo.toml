@@ -1,0 +1,20 @@
+[package]
+name = "miassistant-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+fuzz = true
+
+[dependencies]
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-addr" ] }
+miassistant-core = { path = ".." }
+
+[build-dependencies]
+
+[[bin]]
+name = "fuzz_adb_header"
+path = "fuzz_targets/fuzz_adb_header.rs"
+
+autobins = false

@@ -1,13 +1,18 @@
-use md5;
+use md5::Context;
 use std::io::{Read};
 use std::fs::File;
 use crate::errors::Result;
 
 pub fn md5_file(path: &str) -> Result<String> {
     let mut file = File::open(path)?;
-    let mut data = Vec::new();
-    file.read_to_end(&mut data)?;
-    let digest = md5::compute(&data);
+    let mut ctx = Context::new();
+    let mut buf = [0u8; 1024 * 1024]; // 1 MiB chunks
+    loop {
+        let n = file.read(&mut buf)?;
+        if n == 0 { break; }
+        ctx.consume(&buf[..n]);
+    }
+    let digest = ctx.compute();
     Ok(format!("{:x}", digest))
 }
 

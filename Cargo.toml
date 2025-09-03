@@ -35,6 +35,7 @@ aes = "0.8"
 cbc = "0.1"
 urlencoding = "2"
 digest = "0.10"
+ctrlc = "3"
 
 # Optional crypto (OpenSSL parity) - feature gate later
 openssl = "0.10"

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="MAF"
+           Language="1033"
+           Version="$(var.CargoPackageVersion)"
+           Manufacturer="HasX"
+           UpgradeCode="$(var.UpgradeCode)">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
+    <Media Id="1" Cabinet="cab1.cab" EmbedCab="yes"/>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="MiAssistantTool">
+          <Component Id="cmpExe" Guid="*">
+            <File Id="fileGuiExe" Source="$(var.CargoBinPath_miassistant-gui)" Name="miassistant-gui.exe"/>
+            <Shortcut Id="startmenuShortcut" Directory="ProgramMenuFolder" Name="MAF" WorkingDirectory="INSTALLFOLDER" Advertise="no" Target="[#fileGuiExe]" />
+          </Component>
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder" Name="Programs"/>
+    </Directory>
+
+    <Feature Id="Complete" Title="MAF" Level="1">
+      <ComponentRef Id="cmpExe"/>
+    </Feature>
+
+  <Icon Id="MAFIcon" SourceFile="appicon.ico" />
+  <Property Id="ARPPRODUCTICON" Value="MAFIcon" />
+  </Product>
+</Wix>

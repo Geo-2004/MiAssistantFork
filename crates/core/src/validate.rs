@@ -2,6 +2,7 @@ use crate::errors::{Result, Error};
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Serialize, Deserialize};
 use reqwest::blocking::Client;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use serde_json::Value;
 
 #[derive(Serialize)]
@@ -60,7 +61,15 @@ pub enum ValidationResult {
 
 pub struct Validator { client: Client }
 impl Validator {
-    pub fn new() -> Result<Self> { Ok(Self { client: Client::builder().user_agent("MiTunes_UserAgent_v3.0").build()? }) }
+    pub fn new() -> Result<Self> {
+        // Align with legacy tool behavior: MiTunes UA and form POSTs
+        Ok(Self {
+            client: Client::builder()
+                .user_agent("MiTunes_UserAgent_v3.0")
+                .timeout(std::time::Duration::from_secs(20))
+                .build()?
+        })
+    }
     pub fn validate(&self, info: &crate::device::DeviceInfo, md5: &str, flash: bool) -> Result<ValidationResult> {
         let key = [0x6D,0x69,0x75,0x69,0x6F,0x74,0x61,0x76,0x61,0x6C,0x69,0x64,0x65,0x64,0x31,0x31];
         let iv  = [0x30,0x31,0x30,0x32,0x30,0x33,0x30,0x34,0x30,0x35,0x30,0x36,0x30,0x37,0x30,0x38];
@@ -69,9 +78,20 @@ impl Validator {
         let enc = aes128_cbc_encrypt(&key, &iv, &pkcs7_pad(json))?;
         let b64 = general_purpose::STANDARD.encode(enc);
         let form = format!("q={}&t=&s=1", urlencoding::encode(&b64));
-        let resp = self.client.post("http://update.miui.com/updates/miotaV3.php").body(form).send()?.bytes()?;
-        // decrypt path
-        let decoded = general_purpose::STANDARD.decode(&resp).map_err(|e| Error::Crypto(e.to_string()))?;
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
+        // Some endpoints are picky; emulate curl defaults as closely as needed
+        let resp = self
+            .client
+            .post("http://update.miui.com/updates/miotaV3.php")
+            .headers(headers)
+            .body(form)
+            .send()?
+            .bytes()?;
+        // decrypt path — server returns base64 text; tolerate stray whitespace
+        let mut resp_str = String::from_utf8_lossy(&resp).to_string();
+        resp_str.retain(|c| !c.is_whitespace());
+        let decoded = general_purpose::STANDARD.decode(&resp_str).map_err(|e| Error::Crypto(e.to_string()))?;
         let plain = aes128_cbc_decrypt(&key, &iv, &decoded)?;
         // extract json substring
         let text = String::from_utf8_lossy(&plain);

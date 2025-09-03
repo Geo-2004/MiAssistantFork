@@ -2,7 +2,7 @@
 name = "miassistant-core"
 version = "0.1.0"
 edition = "2021"
-description = "Core library for MiAssistantTool v2 (USB, ADB, validation, sideload)."
+description = "Core library for MAF (MiAssistantFork): Xiaomi recovery flashing (USB, ADB-like transport, validation, sideload)."
 
 [dependencies]
 thiserror.workspace = true
