@@ -1,6 +1,7 @@
 use rusb::{Device, DeviceHandle, GlobalContext};
 use crate::errors::{Result, Error};
 use tracing::{debug};
+use std::panic;
 
 pub const ADB_CLASS: u8 = 0xff;
 pub const ADB_SUBCLASS: u8 = 0x42;
@@ -20,7 +21,13 @@ pub struct OpenDevice {
 }
 
 pub fn find_first_adb() -> Result<OpenDevice> {
-    for device in rusb::devices().map_err(|e| Error::Usb(e.to_string()))?.iter() {
+    let devices_result = panic::catch_unwind(|| rusb::devices());
+    let devices = match devices_result {
+        Ok(Ok(devs)) => devs,
+        Ok(Err(e)) => return Err(Error::Usb(format!("Failed to enumerate USB devices: {}", e))),
+        Err(_) => return Err(Error::Usb("USB subsystem initialization failed. Please check if USB drivers are installed and you have permissions to access USB devices.".to_string())),
+    };
+    for device in devices.iter() {
         if let Some(eps) = inspect_device(&device)? {
             let handle = device.open().map_err(|e| Error::Usb(e.to_string()))?;
             #[cfg(not(windows))]

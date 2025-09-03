@@ -83,7 +83,7 @@ impl<'a> AdbTransport<'a> {
         self.send(&AdbPacket::new(ADB_CONNECT, 0x01000001, crate::adb::ADB_MAX_DATA, banner.len() as u32), Some(banner))?;
         let mut data = Vec::new();
         let pkt = self.recv(&mut data)?;
-        if pkt.cmd != ADB_CONNECT { return Err(Error::Protocol(format!("Expected CNXN reply, got {:x}", pkt.cmd))); }
+        if pkt.cmd != ADB_CONNECT { let cmd = pkt.cmd; return Err(Error::Protocol(format!("Expected CNXN reply, got {:x}", cmd))); }
         let banner_str = String::from_utf8_lossy(&data).to_string();
         debug!(?banner_str, "connected banner");
         Ok(banner_str)

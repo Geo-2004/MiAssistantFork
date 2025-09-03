@@ -1,17 +1,13 @@
-use md_5::{Md5, Digest};
+use md5;
 use std::io::{Read};
 use std::fs::File;
 use crate::errors::Result;
 
 pub fn md5_file(path: &str) -> Result<String> {
     let mut file = File::open(path)?;
-    let mut hasher = Md5::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        let n = file.read(&mut buf)?; if n == 0 { break; }
-        hasher.update(&buf[..n]);
-    }
-    let digest = hasher.finalize();
+    let mut data = Vec::new();
+    file.read_to_end(&mut data)?;
+    let digest = md5::compute(&data);
     Ok(format!("{:x}", digest))
 }
 

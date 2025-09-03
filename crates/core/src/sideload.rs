@@ -22,7 +22,7 @@ pub fn sideload(transport: &mut AdbTransport, path: &str, validate: &str) -> Res
         if pkt.cmd != ADB_WRTE { continue; }
         let block_str = String::from_utf8_lossy(&temp);
         if block_str.len() > 8 { break; }
-        let block: u64 = block_str.trim().parse().map_err(|e| Error::Protocol(e.to_string()))?;
+        let block: u64 = block_str.trim().parse::<u64>().map_err(|e| Error::Protocol(e.to_string()))?;
         let offset = block * SIDELOAD_CHUNK as u64;
         if offset > size { break; }
         let mut to_send = SIDELOAD_CHUNK as u64;

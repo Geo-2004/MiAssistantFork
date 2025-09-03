@@ -36,9 +36,11 @@ fn aes128_cbc_encrypt(key: &[u8;16], iv: &[u8;16], plain: &[u8]) -> Result<Vec<u
     {
         use aes::Aes128; use cbc::cipher::{KeyIvInit, BlockEncryptMut, block_padding::Pkcs7};
         type Aes128CbcEnc = cbc::Encryptor<Aes128>;
+        let mut buf = vec![0u8; plain.len() + 16];
+        buf[..plain.len()].copy_from_slice(plain);
         let enc = Aes128CbcEnc::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
-        let out = enc.encrypt_padded_vec_mut::<Pkcs7>(plain);
-        Ok(out)
+        let encrypted = enc.encrypt_padded_mut::<Pkcs7>(&mut buf, plain.len()).map_err(|e| Error::Crypto(e.to_string()))?;
+        Ok(encrypted.to_vec())
     }
 }
 
@@ -105,8 +107,9 @@ fn aes128_cbc_decrypt(key: &[u8;16], iv: &[u8;16], cipher: &[u8]) -> Result<Vec<
     {
         use aes::Aes128; use cbc::cipher::{KeyIvInit, BlockDecryptMut, block_padding::Pkcs7};
         type Aes128CbcDec = cbc::Decryptor<Aes128>;
+        let mut buf = cipher.to_vec();
         let dec = Aes128CbcDec::new_from_slices(key, iv).map_err(|e| Error::Crypto(e.to_string()))?;
-        let out = dec.decrypt_padded_vec_mut::<Pkcs7>(cipher).map_err(|e| Error::Crypto(e.to_string()))?;
-        Ok(out)
+        let decrypted = dec.decrypt_padded_mut::<Pkcs7>(&mut buf).map_err(|e| Error::Crypto(e.to_string()))?;
+        Ok(decrypted.to_vec())
     }
 }
