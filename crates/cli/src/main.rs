@@ -62,7 +62,13 @@ fn main() -> Result<()> {
         Commands::Sideload { file, validate, resume } => {
             use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
             let cancel = Arc::new(AtomicBool::new(false));
-            if ctrlc::set_handler({ let c = cancel.clone(); move || { c.store(true, Ordering::Relaxed); eprintln!("Cancel requested – will save state and stop after current block"); } }).is_err() {}
+            let _ = ctrlc::set_handler({
+                let c = cancel.clone();
+                move || {
+                    c.store(true, Ordering::Relaxed);
+                    eprintln!("Cancel requested – will save state and stop after current block");
+                }
+            });
             let mut dev = usb::find_first_adb().context("No device found. Put device in recovery/MiAssistant mode and connect via USB.")?;
             let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 30_000 };
             t.connect().context("ADB connect failed")?;
@@ -90,12 +96,20 @@ fn main() -> Result<()> {
                 (&mut info.device, "getdevice:"), (&mut info.version, "getversion:"), (&mut info.sn, "getsn:"), (&mut info.codebase, "getcodebase:"), (&mut info.branch, "getbranch:"), (&mut info.language, "getlanguage:"), (&mut info.region, "getregion:"), (&mut info.romzone, "getromzone:"),
             ] { *field = t.simple_command(query).with_context(|| format!("Failed ADB query: {}", query))?; }
             let v = validate::Validator::new()?.validate(&info, "", false).context("Xiaomi validation failed (listing)")?;
-            match v { validate::ValidationResult::Listing(val) => println!("{}", serde_json::to_string_pretty(&val)?), _ => {} }
+            if let validate::ValidationResult::Listing(val) = v {
+                println!("{}", serde_json::to_string_pretty(&val)?);
+            }
         }
         Commands::Flash { file, yes } => {
             use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
             let cancel = Arc::new(AtomicBool::new(false));
-            if ctrlc::set_handler({ let c = cancel.clone(); move || { c.store(true, Ordering::Relaxed); eprintln!("Cancel requested – will stop after current block"); } }).is_err() {}
+            let _ = ctrlc::set_handler({
+                let c = cancel.clone();
+                move || {
+                    c.store(true, Ordering::Relaxed);
+                    eprintln!("Cancel requested – will stop after current block");
+                }
+            });
             let md5sum = md5::md5_file(&file).with_context(|| format!("Failed to compute MD5 for {}", file))?;
             let mut dev = usb::find_first_adb().context("No device found. Put device in recovery/MiAssistant mode and connect via USB.")?;
             let mut t = adb::AdbTransport { dev: &mut dev, timeout_ms: 10_000 };

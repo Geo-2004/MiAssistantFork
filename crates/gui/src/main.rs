@@ -42,11 +42,8 @@ enum Msg {
 }
 
 #[cfg(feature = "ui")]
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Language { En, Es }
-
-#[cfg(feature = "ui")]
-impl Default for Language { fn default() -> Self { Language::En } }
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum Language { #[default] En, Es }
 
 #[cfg(feature = "ui")]
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
@@ -336,9 +333,21 @@ impl eframe::App for App {
                 if ui.button(self.t("Pick ROM File")).clicked() { self.action_pick_file(); }
                 if ui.button(self.t("Get Token")).clicked() { self.action_get_token(); }
                 if ui.button(self.t("Flash")).clicked() { self.action_flash(); }
-                if !self.busy { if let Some(f) = &self.selected_file { if std::path::Path::new(&format!("{}.sideload.state", f)).exists() { if ui.button("Resume Flash").clicked() { self.erase_confirmed = true; self.action_flash(); } } } }
-                if self.last_flash_failed && !self.busy { if ui.button(self.t("Retry Flash")).clicked() { self.last_flash_failed = false; self.action_flash(); } }
-                if self.cancel_token.is_some() && self.busy { if ui.button(self.t("Cancel Flash")).clicked() { if let Some(c) = &self.cancel_token { c.store(true, Ordering::Relaxed); } } }
+                if !self.busy {
+                    if let Some(f) = &self.selected_file {
+                        if std::path::Path::new(&format!("{}.sideload.state", f)).exists() && ui.button("Resume Flash").clicked() {
+                            self.erase_confirmed = true;
+                            self.action_flash();
+                        }
+                    }
+                }
+                if self.last_flash_failed && !self.busy && ui.button(self.t("Retry Flash")).clicked() {
+                    self.last_flash_failed = false;
+                    self.action_flash();
+                }
+                if self.cancel_token.is_some() && self.busy && ui.button(self.t("Cancel Flash")).clicked() {
+                    if let Some(c) = &self.cancel_token { c.store(true, Ordering::Relaxed); }
+                }
                 if ui.button(self.t("Format Data")).clicked() {
                     // quick inline action: do not block UI
                     let selected = self.selected_device;

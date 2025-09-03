@@ -20,7 +20,12 @@ struct RequestPayload<'a> {
     pkg: &'a str,
 }
 
-fn pkcs7_pad(mut data: Vec<u8>) -> Vec<u8> { let pad = 16 - (data.len() % 16); data.extend(std::iter::repeat(pad as u8).take(pad)); data }
+fn pkcs7_pad(mut data: Vec<u8>) -> Vec<u8> {
+    let pad = 16 - (data.len() % 16);
+    // Efficiently append padding bytes
+    data.resize(data.len() + pad, pad as u8);
+    data
+}
 
 fn aes128_cbc_encrypt(key: &[u8;16], iv: &[u8;16], plain: &[u8]) -> Result<Vec<u8>> {
     // Pure Rust: use aes + cbc crates, but to keep deps minimal we implement via openssl feature if enabled
@@ -31,7 +36,7 @@ fn aes128_cbc_encrypt(key: &[u8;16], iv: &[u8;16], plain: &[u8]) -> Result<Vec<u
         let mut out = vec![0u8; plain.len() + cipher.block_size()];
         let mut count = c.update(plain, &mut out).map_err(|e| Error::Crypto(e.to_string()))?;
         count += c.finalize(&mut out[count..]).map_err(|e| Error::Crypto(e.to_string()))?;
-        out.truncate(count); return Ok(out);
+    out.truncate(count); Ok(out)
     }
     #[cfg(not(feature = "openssl"))]
     {
@@ -121,7 +126,7 @@ fn aes128_cbc_decrypt(key: &[u8;16], iv: &[u8;16], cipher: &[u8]) -> Result<Vec<
         let mut out = vec![0u8; cipher.len() + cipher_type.block_size()];
         let mut count = c.update(cipher, &mut out).map_err(|e| Error::Crypto(e.to_string()))?;
         count += c.finalize(&mut out[count..]).map_err(|e| Error::Crypto(e.to_string()))?;
-        out.truncate(count); return Ok(out);
+    out.truncate(count); Ok(out)
     }
     #[cfg(not(feature = "openssl"))]
     {

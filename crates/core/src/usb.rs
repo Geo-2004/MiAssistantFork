@@ -30,7 +30,7 @@ pub struct DeviceSummary {
 }
 
 pub fn find_first_adb() -> Result<OpenDevice> {
-    let devices_result = panic::catch_unwind(|| rusb::devices());
+    let devices_result = panic::catch_unwind(rusb::devices);
     let devices = match devices_result {
         Ok(Ok(devs)) => devs,
         Ok(Err(e)) => return Err(Error::Usb(format!("Failed to enumerate USB devices: {}", e))),
@@ -41,7 +41,7 @@ pub fn find_first_adb() -> Result<OpenDevice> {
             let handle = device.open().map_err(|e| Error::Usb(e.to_string()))?;
             #[cfg(not(windows))]
             let _ = handle.set_auto_detach_kernel_driver(true);
-            handle.claim_interface(eps.interface_number as u8).map_err(|e| Error::Usb(e.to_string()))?;
+            handle.claim_interface(eps.interface_number).map_err(|e| Error::Usb(e.to_string()))?;
             return Ok(OpenDevice { handle, endpoints: eps });
         }
     }
@@ -49,7 +49,7 @@ pub fn find_first_adb() -> Result<OpenDevice> {
 }
 
 pub fn list_adb_devices() -> Result<Vec<DeviceSummary>> {
-    let devices_result = panic::catch_unwind(|| rusb::devices());
+    let devices_result = panic::catch_unwind(rusb::devices);
     let devices = match devices_result {
         Ok(Ok(devs)) => devs,
         Ok(Err(e)) => return Err(Error::Usb(format!("Failed to enumerate USB devices: {}", e))),
@@ -58,8 +58,7 @@ pub fn list_adb_devices() -> Result<Vec<DeviceSummary>> {
     let mut out = Vec::new();
     for device in devices.iter() {
         let dd = match device.device_descriptor() { Ok(d) => d, Err(_) => continue };
-        let mut has = false;
-        if let Some(_) = inspect_device(&device)? { has = true; }
+    let has = inspect_device(&device)?.is_some();
         if has {
             out.push(DeviceSummary { bus: device.bus_number(), address: device.address(), vendor_id: dd.vendor_id(), product_id: dd.product_id(), has_adb: true });
         }
@@ -75,7 +74,7 @@ pub fn open_by_location(bus: u8, address: u8) -> Result<OpenDevice> {
                 let handle = device.open().map_err(|e| Error::Usb(e.to_string()))?;
                 #[cfg(not(windows))]
                 let _ = handle.set_auto_detach_kernel_driver(true);
-                handle.claim_interface(eps.interface_number as u8).map_err(|e| Error::Usb(e.to_string()))?;
+                handle.claim_interface(eps.interface_number).map_err(|e| Error::Usb(e.to_string()))?;
                 return Ok(OpenDevice { handle, endpoints: eps });
             }
         }
