@@ -1,0 +1,14 @@
+# Rust
+/target
+**/*.rs.bk
+
+# IDE
+.vscode/
+.idea/
+
+# Logs / temp
+*.log
+response.tmp
+
+# Binaries
+*.exe

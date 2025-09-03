@@ -1,0 +1,17 @@
+[package]
+name = "miassistant-gui"
+version = "0.1.0"
+edition = "2021"
+description = "(Experimental) GUI for MiAssistantTool v2"
+
+[dependencies]
+miassistant-core = { path = "../core" }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+egui = { version = "0.28", optional = true }
+eframe = { version = "0.28", optional = true }
+
+[features]
+default = []
+ui = ["egui", "eframe"]

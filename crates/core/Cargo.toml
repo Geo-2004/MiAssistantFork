@@ -1,0 +1,28 @@
+[package]
+name = "miassistant-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core library for MiAssistantTool v2 (USB, ADB, validation, sideload)."
+
+[dependencies]
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+rusb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+md-5.workspace = true
+reqwest.workspace = true
+hex.workspace = true
+bytes.workspace = true
+indicatif.workspace = true
+async-trait.workspace = true
+openssl = { workspace = true, optional = true }
+
+[features]
+default = []
+openssl = ["dep:openssl"]
+
+[dev-dependencies]
+tempfile = "3"

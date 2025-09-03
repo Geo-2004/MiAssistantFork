@@ -1,0 +1,45 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/cli",
+    "crates/gui",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["MiAssistantTool Contributors"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/offici5l/MiAssistantTool"
+readme = "README.md"
+version = "2.0.0-alpha.0"
+
+[workspace.dependencies]
+# Core dependencies re-used
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+rusb = "0.9"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+md-5 = "0.10"
+reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"] }
+hex = "0.4"
+bytes = "1"
+indicatif = "0.17"
+async-trait = "0.1"
+aes = "0.8"
+cbc = "0.1"
+urlencoding = "2"
+
+# Optional crypto (OpenSSL parity) - feature gate later
+openssl = { version = "0.10", optional = true }
+
+[workspace.features]
+default = ["rustls"]
+# Provide either rustls (pure Rust) or openssl backend
+rustls = []
+vendored-openssl = ["openssl/vendored"]
