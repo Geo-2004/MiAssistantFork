@@ -11,6 +11,7 @@ Open‑source Rust implementation of Xiaomi MiAssistant style recovery flashing 
 - Cross-platform (Windows / Linux / macOS)
 
 ## Workspace Layout
+
 ```
 Cargo.toml            # workspace
 crates/
@@ -20,27 +21,36 @@ crates/
 ```
 
 ## Status
+
 Core alpha: USB detection, ADB connect handshake, packet send/receive, sideload streaming, validation encrypt/decrypt + JSON parse, CLI subcommands (detect, info, adb, list-roms, flash, md5). GUI is functional (experimental) and provides the main rescue flows described below.
 
 - Device discovery is more permissive than the legacy C tool (does not require the ADB protocol byte which is unreliable on some devices) and auto-claims the correct bulk endpoints.
 - Flash flow: compute MD5 of the recovery ZIP, request Xiaomi validation token, stream sideload with progress, handle OKAY/WRTE/CLSE framing reliably.
 
 ## Quick Start
+
 1. Boot device into official Recovery (should show “Connect to MiAssistant”).
 2. Connect via USB directly (avoid hubs).
 3. Run detection:
+
 ```
 cargo run -p miassistant-cli -- detect
 ```
+
 4. Fetch device info / confirm communication:
+
 ```
 cargo run -p miassistant-cli -- info
 ```
+
 5. Flash an official recovery ROM ZIP (download from Xiaomi sources; keep file unmodified):
+
 ```
 cargo run -p miassistant-cli -- flash /path/to/miui_ROM.zip
 ```
+
 6. If interrupted (power loss / Ctrl+C) resume:
+
 ```
 cargo run -p miassistant-cli -- sideload /path/to/miui_ROM.zip --resume
 ```
@@ -48,6 +58,7 @@ cargo run -p miassistant-cli -- sideload /path/to/miui_ROM.zip --resume
 Need help / stuck? Join Discord: https://discord.gg/Mun6CsfQqa
 
 ## Building
+
 Install Rust (https://rustup.rs).
 
 ```
@@ -100,8 +111,8 @@ pre-commit run --all-files
 
 Alternatively the repository contains a fallback git hook at `.githooks/pre-commit` (already configured when you clone this repo), which runs `cargo fmt --all` and clippy unless you set `SKIP_CLIPPY=1`.
 
-
 GUI features (cross‑platform, eframe/egui):
+
 - Device detection + info display
 - ROM listing from Xiaomi (auth-compatible)
 - File picker for recovery ZIPs
@@ -114,6 +125,7 @@ GUI features (cross‑platform, eframe/egui):
 Tip: If Erase=YES is shown after token retrieval, data will be wiped by the official package.
 
 ## Packaging
+
 - GitHub Releases attach platform builds on tag pushes:
   - Windows: ZIP and MSI installer (GUI app). Winget/MSIX planned.
   - macOS: .app bundle + DMG
@@ -121,8 +133,8 @@ Tip: If Erase=YES is shown after token retrieval, data will be wiped by the offi
 
 GitHub Actions builds and uploads release artifacts on tagged commits; end users can download installers and packaged binaries directly from the Releases page without installing Rust or building locally. See `.github/workflows/release.yml` for details about the CI/release pipeline.
 
-Binary Releases
-----------------
+## Binary Releases
+
 If you don't want to build from source, download the appropriate artifact from the project's GitHub Releases page. Typical usage:
 
 - Windows: run the installer or extract the ZIP and run the portable GUI/CLI binary
@@ -132,6 +144,7 @@ If you don't want to build from source, download the appropriate artifact from t
 Release artifacts are produced by the repository's CI on tagged pushes; check the release notes and attached checksums on each Release for verification.
 
 ## Roadmap
+
 - [x] More ADB unit tests (framing, error cases) — header encode/decode tests
 - [x] Enhanced logging spans + structured events (tracing in ADB transport)
 - [x] Cancellation & resume for sideload (state file `<rom>.sideload.state`, `--resume` and Ctrl+C safe)
@@ -141,33 +154,43 @@ Release artifacts are produced by the repository's CI on tagged pushes; check th
 - [x] Fuzz test packet parser — libFuzzer target for ADB header decode (`crates/core/fuzz`)
 
 ### Sideload Resume / Cancel
+
 Press Ctrl+C during `sideload` or `flash` to gracefully stop after the current block; progress state is saved to `<file>.sideload.state`. Resume with:
+
 ```
 cargo run -p miassistant-cli -- sideload /path/to/ROM.zip --resume
 ```
+
 The `flash` command always resumes automatically if state exists for the target file.
 
 ### Fuzzing
+
 Install cargo-fuzz then run:
+
 ```
 cargo install cargo-fuzz
 cd crates/core/fuzz && cargo +nightly fuzz run fuzz_adb_header
 ```
 
 ## License
+
 MIT
 
 ## Support & Community
+
 Discord (user support, troubleshooting, development chat): https://discord.gg/Mun6CsfQqa
 
 Please include when asking for help:
+
 - Output of `cargo run -p miassistant-cli -- detect -v`
 - Output of `cargo run -p miassistant-cli -- info -v` (redact serial if you wish)
 - Exact ROM filename you’re flashing
 - Platform (Windows / Linux / macOS) and Rust version (`rustc --version`)
 
 ## SEO / Discovery
+
 Keywords (for search engines):
+
 ```
 xiaomi recovery connect to assistant tool
 miassistant tool alternative open source
@@ -176,7 +199,9 @@ xiaomi phone stuck recovery need reflash sideload
 miui recovery rom validation token erase data
 unbrick xiaomi without unlocking bootloader
 ```
+
 If you found this via “Connect to MiAssistant” screen: this tool communicates over the recovery’s ADB-like bulk endpoints, obtains Xiaomi’s validation token (needed for locked bootloader official packages), and streams the ZIP with integrity checks. It does NOT bypass security or flash unofficial builds.
 
 ## Credits
+
 Original C prototype: https://github.com/offici5l/MiAssistantTool (superseded). This fork (MAF) modernizes in Rust with safer USB + packet handling.
