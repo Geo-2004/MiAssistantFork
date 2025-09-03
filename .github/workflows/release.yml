@@ -75,7 +75,8 @@ jobs:
           $ver = ($meta.packages | Where-Object { $_.name -eq 'miassistant-gui' }).version
           Write-Host "Building MSI for miassistant-gui version $ver"
           # Use cargo-wix's --install-version to set MSI version instead of forwarding defines
-          cargo wix -p miassistant-gui --nocapture --install-version $ver
+          # Define CargoPackageVersion variable used in main.wxs
+          cargo wix -p miassistant-gui --nocapture --install-version $ver -C -dCargoPackageVersion=$ver
           Copy-Item target\wix\miassistant-gui-*.msi .\miassistant-Windows.msi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
