@@ -5,7 +5,7 @@
            Language="1033"
            Version="$(var.CargoPackageVersion)"
            Manufacturer="HasX"
-           UpgradeCode="$(var.UpgradeCode)">
+           UpgradeCode="F2E8C6E4-6B9B-4D1D-9C7E-05E7F3B14F6A">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
