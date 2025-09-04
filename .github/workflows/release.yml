@@ -74,6 +74,10 @@ jobs:
           $meta = cargo metadata --format-version 1 --no-deps --manifest-path crates/gui/Cargo.toml | ConvertFrom-Json
           $ver = ($meta.packages | Where-Object { $_.name -eq 'miassistant-gui' }).version
           Write-Host "Building MSI for miassistant-gui version $ver"
+          # Provide version to WiX preprocessor via env var as a fallback
+          $env:CARGO_PKG_VERSION = $ver
+          # Provide binary dir to WiX preprocessor via env var as a fallback
+          $env:CARGO_TARGET_BIN_DIR = (Join-Path (Get-Location) 'target\release')
           # Use cargo-wix; it sets WiX variables like CargoPackageVersion/CargoBinPath_* automatically
           cargo wix -p miassistant-gui --nocapture --install-version $ver
           Copy-Item target\wix\miassistant-gui-*.msi .\miassistant-Windows.msi

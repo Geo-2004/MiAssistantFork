@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?ifndef CargoPackageVersion?>
+  <?define CargoPackageVersion = $(env.CARGO_PKG_VERSION) ?>
+  <?endif?>
+  <?ifndef CargoTargetBinDir?>
+  <?define CargoTargetBinDir = $(env.CARGO_TARGET_BIN_DIR) ?>
+  <?endif?>
   <Product Id="*"
            Name="MAF"
            Language="1033"
@@ -15,7 +21,8 @@
       <Directory Id="ProgramFilesFolder">
         <Directory Id="INSTALLFOLDER" Name="MiAssistantTool">
           <Component Id="cmpExe" Guid="*">
-            <File Id="fileGuiExe" Source="$(var.CargoBinPath_miassistant-gui)" Name="miassistant-gui.exe"/>
+            <!-- cargo-wix defines CargoTargetBinDir; avoid per-binary variable name issues -->
+            <File Id="fileGuiExe" Source="$(var.CargoTargetBinDir)\miassistant-gui.exe" Name="miassistant-gui.exe"/>
             <Shortcut Id="startmenuShortcut" Directory="ProgramMenuFolder" Name="MAF" WorkingDirectory="INSTALLFOLDER" Advertise="no" Target="[#fileGuiExe]" />
           </Component>
         </Directory>
